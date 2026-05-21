@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HabitFlow">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.png">
+<title>HabitFlow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f14; --surface:#1a1a24; --s2:#22222f; --s3:#2a2a3a;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text:#f0f0f8; --muted:#6b6b85; --muted2:#9090a8;
+  --accent:#7c6fff; --accent2:#ff6f91; --green:#4ade80; --amber:#fbbf24; --cyan:#22d3ee;
+  --r:18px; --sb:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes ripple{0%{transform:scale(0);opacity:0.4}100%{transform:scale(2.5);opacity:0}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes barGrow{from{height:0}to{height:var(--target-h)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes checkPop{0%{transform:scale(0) rotate(-20deg)}70%{transform:scale(1.2) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes streakBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+.fade-up{animation:fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;}
+.fade-in{animation:fadeIn 0.3s ease both;}
+
+/* ── NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;
+  background:rgba(15,15,20,0.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--border);
+  display:flex;justify-content:space-around;
+  padding:10px 0 calc(10px + var(--sb));z-index:100;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;padding:6px 20px;border-radius:14px;
+  transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+  border:none;background:none;color:var(--muted);position:relative;
+}
+.nav-item.active{color:var(--accent);}
+.nav-item.active .nav-icon{transform:scale(1.15);}
+.nav-icon{font-size:21px;line-height:1;transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1);}
+.nav-label{font-size:10px;font-weight:500;letter-spacing:0.3px;}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);position:absolute;bottom:4px;opacity:0;transition:opacity 0.2s;}
+.nav-item.active .nav-dot{opacity:1;}
+
+/* ── PAGES ── */
+.page{display:none;padding:0 0 95px;min-height:100vh;}
+.page.active{display:block;}
+
+/* ── HEADER ── */
+.header{padding:52px 20px 16px;display:flex;align-items:flex-end;justify-content:space-between;}
+.header-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.5px;}
+.header-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+.add-btn{
+  width:44px;height:44px;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),#5b4fd4);
+  border:none;color:white;font-size:26px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(124,111,255,0.4);
+  transition:transform 0.15s,box-shadow 0.15s;position:relative;overflow:hidden;
+}
+.add-btn:active{transform:scale(0.91);box-shadow:0 2px 10px rgba(124,111,255,0.3);}
+
+/* ── TODAY BANNER ── */
+.today-banner{
+  margin:0 20px 16px;
+  background:linear-gradient(135deg,rgba(124,111,255,0.12),rgba(255,111,145,0.08));
+  border:1px solid rgba(124,111,255,0.18);border-radius:16px;padding:16px;
+  animation:fadeUp 0.4s ease both;
+}
+.banner-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.banner-title{font-size:15px;font-weight:600;}
+.banner-pct{
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.banner-bar-wrap{height:5px;background:var(--s2);border-radius:3px;overflow:hidden;}
+.banner-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.6s cubic-bezier(0.4,0,0.2,1);}
+.banner-sub{font-size:12px;color:var(--muted);margin-top:6px;}
+
+/* ── HABIT CARDS ── */
+.habits-list{padding:0 20px;display:flex;flex-direction:column;gap:12px;}
+.habit-card{
+  background:var(--surface);border-radius:var(--r);
+  border:1px solid var(--border);
+  transition:transform 0.2s,box-shadow 0.2s;
+  position:relative;overflow:hidden;
+  animation:fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;
+}
+.habit-card:active{transform:scale(0.985);}
+.habit-card-accent{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
+.habit-inner{padding:14px 14px 12px 17px;}
+.habit-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.habit-left{display:flex;align-items:center;gap:11px;}
+.habit-emoji{font-size:26px;line-height:1;}
+.habit-name{font-size:15px;font-weight:600;margin-bottom:2px;}
+.habit-streak-row{display:flex;align-items:center;gap:6px;}
+.streak-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.25);
+  border-radius:20px;padding:2px 8px;font-size:11px;color:var(--amber);font-weight:600;
+  animation:streakBounce 2s ease infinite;
+}
+.habit-actions{display:flex;align-items:center;gap:8px;}
+.del-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px;opacity:0.5;transition:opacity 0.2s;}
+.del-btn:hover{opacity:1;color:var(--accent2);}
+.check-btn{
+  width:38px;height:38px;border-radius:50%;
+  border:2px solid var(--c,var(--accent));background:transparent;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:18px;transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  color:var(--c,var(--accent));position:relative;overflow:hidden;flex-shrink:0;
+}
+.check-btn.done{background:var(--c,var(--accent));color:white;border-color:var(--c,var(--accent));}
+.check-btn.done .check-icon{animation:checkPop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;}
+.check-icon{display:block;}
+.check-btn:active{transform:scale(0.85);}
+.week-dots{display:flex;gap:5px;margin-bottom:10px;}
+.wd{flex:1;height:5px;border-radius:3px;background:var(--s2);transition:background 0.3s,transform 0.2s;}
+.wd.done{background:var(--c,var(--accent));}
+.wd.today{transform:scaleY(1.4);box-shadow:0 0 6px var(--c,var(--accent));}
+
+/* ── TIME TRACKER SECTION ── */
+.time-section{
+  margin:0 0 0;padding:10px 14px 12px 17px;
+  border-top:1px solid var(--border);
+}
+.time-section-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.time-label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0.5px;text-transform:uppercase;}
+.time-display{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--cyan);letter-spacing:1px;transition:all 0.3s;}
+.time-display.running{animation:pulse 1.5s ease infinite;}
+.time-btns{display:flex;gap:6px;}
+.time-btn{
+  padding:5px 12px;border-radius:20px;border:1px solid var(--border2);
+  background:var(--s2);color:var(--text);font-size:12px;font-weight:500;
+  cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;
+}
+.time-btn.start{border-color:rgba(34,211,238,0.3);color:var(--cyan);background:rgba(34,211,238,0.08);}
+.time-btn.stop{border-color:rgba(255,111,145,0.3);color:var(--accent2);background:rgba(255,111,145,0.08);}
+.time-btn.reset{border-color:var(--border);color:var(--muted);}
+.time-btn:active{transform:scale(0.93);}
+.time-log-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.time-log-chip{
+  font-size:11px;color:var(--muted2);background:var(--s2);
+  border-radius:10px;padding:2px 8px;border:1px solid var(--border);
+}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:60px 40px;color:var(--muted);animation:fadeIn 0.5s ease;}
+.empty-emoji{font-size:52px;margin-bottom:16px;}
+.empty-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.empty-text{font-size:14px;line-height:1.6;}
+
+/* ── CALENDAR ── */
+.cal-header{padding:52px 20px 16px;}
+.cal-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cal-month-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+.cal-nav-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.cal-nav-btn:active{transform:scale(0.9);}
+.cal-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+.cal-chips::-webkit-scrollbar{display:none;}
+.cal-chip{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;}
+.cal-chip.active{color:white;border-color:transparent;}
+.cal-grid{padding:0 20px;}
+.cal-days-hdr{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:6px;}
+.cal-dlabel{font-size:11px;color:var(--muted);font-weight:500;padding:4px 0;}
+.cal-cells{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-cell{
+  aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  background:var(--surface);color:var(--muted);
+}
+.cal-cell.has-date{color:var(--text);}
+.cal-cell.today{border:1.5px solid var(--accent);color:var(--accent);}
+.cal-cell.completed{color:white;}
+.cal-cell.completed.today{box-shadow:0 0 14px rgba(124,111,255,0.45);}
+.cal-cell.empty{background:transparent;cursor:default;}
+.cal-cell:not(.empty):active{transform:scale(0.85);}
+.cal-cell.future{opacity:0.3;cursor:default;}
+
+/* ── STATS PAGE ── */
+.stats-hdr{padding:52px 20px 20px;}
+.stats-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;}
+.stats-grid{padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.stat-card{
+  background:var(--surface);border-radius:var(--r);padding:16px;
+  border:1px solid var(--border);
+  animation:fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;transition:transform 0.2s;
+}
+.stat-card:active{transform:scale(0.96);}
+.stat-icon{font-size:20px;margin-bottom:8px;}
+.stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px;}
+
+.sec-title{font-size:14px;font-weight:600;padding:0 20px;margin-bottom:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:0.8px;}
+
+/* ── CHART ── */
+.chart-wrap{padding:0 20px;margin-bottom:20px;}
+.chart-card{
+  background:var(--surface);border-radius:var(--r);padding:18px;
+  border:1px solid var(--border);
+}
+.chart-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.chart-title{font-size:14px;font-weight:600;margin-bottom:3px;}
+.chart-sub{font-size:12px;color:var(--muted);}
+.chart-toggle{display:flex;gap:4px;}
+.ctog-btn{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--s2);color:var(--muted);font-size:11px;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.ctog-btn.active{background:var(--accent);color:white;border-color:var(--accent);}
+.chart-bars{display:flex;align-items:flex-end;gap:5px;height:90px;padding-bottom:2px;}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
+.chart-bar-wrap{width:100%;display:flex;align-items:flex-end;flex:1;}
+.chart-bar{
+  width:100%;border-radius:5px 5px 0 0;min-height:3px;
+  transition:height 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+.chart-bar.accent-bar{background:linear-gradient(180deg,var(--accent),rgba(124,111,255,0.5));}
+.chart-bar.cyan-bar{background:linear-gradient(180deg,var(--cyan),rgba(34,211,238,0.4));}
+.chart-bar.highlight{box-shadow:0 -3px 12px rgba(124,111,255,0.5);}
+.chart-bar.cyan-bar.highlight{box-shadow:0 -3px 12px rgba(34,211,238,0.5);}
+.chart-dlabel{font-size:9px;color:var(--muted);}
+.chart-val-label{font-size:9px;color:var(--muted2);margin-bottom:2px;}
+
+/* ── TIME STATS ── */
+.time-stats-section{padding:0 20px;margin-bottom:20px;}
+.time-stats-card{
+  background:var(--surface);border-radius:var(--r);padding:16px;
+  border:1px solid var(--border);
+}
+.tsrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.tsrow:last-child{border-bottom:none;}
+.tsrow-left{font-size:13px;display:flex;align-items:center;gap:8px;}
+.tsrow-val{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--cyan);}
+
+/* ── PROGRESS BARS ── */
+.prog-list{padding:0 20px;display:flex;flex-direction:column;gap:14px;margin-bottom:20px;}
+.prog-item{}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.prog-name{font-size:14px;font-weight:500;display:flex;align-items:center;gap:7px;}
+.prog-pct{font-size:13px;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;}
+.prog-bar{height:7px;background:var(--s2);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;transition:width 0.9s cubic-bezier(0.4,0,0.2,1);width:0;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border-radius:24px 24px 0 0;
+  padding:20px 22px calc(22px + var(--sb));
+  width:100%;max-width:430px;border-top:1px solid var(--border2);
+  animation:slideUp 0.32s cubic-bezier(0.4,0,0.2,1);
+}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:18px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:7px;display:block;}
+.form-input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--accent);}
+.emoji-picker{display:flex;gap:7px;flex-wrap:wrap;}
+.emoji-opt{width:42px;height:42px;border-radius:12px;background:var(--s2);border:2px solid transparent;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);}
+.emoji-opt.selected{border-color:var(--accent);background:rgba(124,111,255,0.15);transform:scale(1.1);}
+.color-picker{display:flex;gap:10px;}
+.color-opt{width:30px;height:30px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),border-color 0.2s;}
+.color-opt.selected{border-color:white;transform:scale(1.2);}
+.save-btn{width:100%;background:linear-gradient(135deg,var(--accent),#5b4fd4);color:white;border:none;border-radius:14px;padding:14px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px;transition:opacity 0.2s,transform 0.15s;box-shadow:0 4px 20px rgba(124,111,255,0.35);}
+.save-btn:active{transform:scale(0.97);opacity:0.9;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--s2);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);border:1px solid var(--border2);white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <div class="header">
+    <div><div class="header-title">Today</div><div class="header-sub" id="home-date"></div></div>
+    <button class="add-btn" onclick="openModal()" aria-label="Add habit">+</button>
+  </div>
+  <div class="today-banner" id="today-banner">
+    <div class="banner-top">
+      <div><div class="banner-title" id="banner-msg">Let's build today!</div><div class="banner-sub" id="banner-sub">0 of 0 habits done</div></div>
+      <div class="banner-pct" id="banner-pct">0%</div>
+    </div>
+    <div class="banner-bar-wrap"><div class="banner-bar" id="banner-bar" style="width:0%"></div></div>
+  </div>
+  <div class="habits-list" id="habits-list">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-emoji">🌱</div>
+      <div class="empty-title">No habits yet</div>
+      <div class="empty-text">Tap <strong>+</strong> to add your first habit and start building your streak!</div>
+    </div>
+  </div>
+</div>
+
+<!-- CALENDAR -->
+<div id="page-calendar" class="page">
+  <div class="cal-header">
+    <div class="cal-month-nav">
+      <div class="cal-month-title" id="cal-month-title"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-chips" id="cal-chips"></div>
+  </div>
+  <div class="cal-grid">
+    <div class="cal-days-hdr">
+      <div class="cal-dlabel">Su</div><div class="cal-dlabel">Mo</div><div class="cal-dlabel">Tu</div>
+      <div class="cal-dlabel">We</div><div class="cal-dlabel">Th</div><div class="cal-dlabel">Fr</div><div class="cal-dlabel">Sa</div>
+    </div>
+    <div class="cal-cells" id="cal-cells"></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="page-stats" class="page">
+  <div class="stats-hdr"><div class="stats-title">Stats</div></div>
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <div class="sec-title">Habit Completions</div>
+  <div class="chart-wrap">
+    <div class="chart-card">
+      <div class="chart-top">
+        <div><div class="chart-title">Weekly Overview</div><div class="chart-sub" id="habit-chart-sub"></div></div>
+        <div class="chart-toggle">
+          <button class="ctog-btn active" onclick="switchChart('habit',this)">Habits</button>
+          <button class="ctog-btn" onclick="switchChart('time',this)">Time</button>
+        </div>
+      </div>
+      <div class="chart-bars" id="chart-bars"></div>
+    </div>
+  </div>
+
+  <div class="sec-title">Productive Time</div>
+  <div class="time-stats-section">
+    <div class="time-stats-card" id="time-stats-card"></div>
+  </div>
+
+  <div class="sec-title">Time Graph</div>
+  <div class="chart-wrap">
+    <div class="chart-card">
+      <div class="chart-top">
+        <div><div class="chart-title">Daily Focus Time</div><div class="chart-sub" id="time-chart-sub"></div></div>
+      </div>
+      <div class="chart-bars" id="time-chart-bars"></div>
+    </div>
+  </div>
+
+  <div class="sec-title">Habit Progress</div>
+  <div class="prog-list" id="prog-list"></div>
+</div>
+
+<!-- NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showPage('home',this)">
+    <span class="nav-icon">🏠</span><span class="nav-label">Today</span><span class="nav-dot"></span>
+  </button>
+  <button class="nav-item" onclick="showPage('calendar',this)">
+    <span class="nav-icon">📅</span><span class="nav-label">Calendar</span><span class="nav-dot"></span>
+  </button>
+  <button class="nav-item" onclick="showPage('stats',this)">
+    <span class="nav-icon">📊</span><span class="nav-label">Stats</span><span class="nav-dot"></span>
+  </button>
+</nav>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModalBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New Habit</div>
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input class="form-input" id="habit-name" type="text" placeholder="e.g. Drink water, Read, Exercise…" maxlength="40">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Emoji</label>
+      <div class="emoji-picker" id="emoji-picker">
+        <div class="emoji-opt selected" data-e="💧" onclick="selEmoji(this)">💧</div>
+        <div class="emoji-opt" data-e="📚" onclick="selEmoji(this)">📚</div>
+        <div class="emoji-opt" data-e="🏃" onclick="selEmoji(this)">🏃</div>
+        <div class="emoji-opt" data-e="🧘" onclick="selEmoji(this)">🧘</div>
+        <div class="emoji-opt" data-e="😴" onclick="selEmoji(this)">😴</div>
+        <div class="emoji-opt" data-e="🍎" onclick="selEmoji(this)">🍎</div>
+        <div class="emoji-opt" data-e="✍️" onclick="selEmoji(this)">✍️</div>
+        <div class="emoji-opt" data-e="🎸" onclick="selEmoji(this)">🎸</div>
+        <div class="emoji-opt" data-e="💊" onclick="selEmoji(this)">💊</div>
+        <div class="emoji-opt" data-e="🌿" onclick="selEmoji(this)">🌿</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Color</label>
+      <div class="color-picker" id="color-picker">
+        <div class="color-opt selected" data-c="#7c6fff" style="background:#7c6fff" onclick="selColor(this)"></div>
+        <div class="color-opt" data-c="#ff6f91" style="background:#ff6f91" onclick="selColor(this)"></div>
+        <div class="color-opt" data-c="#4ade80" style="background:#4ade80" onclick="selColor(this)"></div>
+        <div class="color-opt" data-c="#fbbf24" style="background:#fbbf24" onclick="selColor(this)"></div>
+        <div class="color-opt" data-c="#38bdf8" style="background:#38bdf8" onclick="selColor(this)"></div>
+        <div class="color-opt" data-c="#f97316" style="background:#f97316" onclick="selColor(this)"></div>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveHabit()">Add Habit ✓</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let habits      = JSON.parse(localStorage.getItem('hf_habits') || '[]');
+let completions = JSON.parse(localStorage.getItem('hf_completions') || '{}');
+let timeLogs    = JSON.parse(localStorage.getItem('hf_timelogs') || '{}'); // {habitId: {dateKey: [seconds,...]}}
+let timers      = {}; // {habitId: {start, interval, elapsed}}
+
+let selEmoji_   = '💧';
+let selColor_   = '#7c6fff';
+let calDate     = new Date();
+let selHabitId  = null;
+let chartMode   = 'habit';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DSHORT = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function save() {
+  localStorage.setItem('hf_habits', JSON.stringify(habits));
+  localStorage.setItem('hf_completions', JSON.stringify(completions));
+  localStorage.setItem('hf_timelogs', JSON.stringify(timeLogs));
+}
+
+function dkey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function today() { return dkey(new Date()); }
+
+function isDone(hid, dk) { return !!(completions[dk] && completions[dk].includes(hid)); }
+
+function toggleDone(hid, dk) {
+  if (!completions[dk]) completions[dk] = [];
+  const i = completions[dk].indexOf(hid);
+  i >= 0 ? completions[dk].splice(i,1) : completions[dk].push(hid);
+  save();
+}
+
+// ═══════════════════════════════════════════
+// STREAKS
+// ═══════════════════════════════════════════
+function calcStreak(hid) {
+  let streak = 0, d = new Date();
+  if (!isDone(hid, dkey(d))) d.setDate(d.getDate()-1);
+  for (let i = 0; i < 366; i++) {
+    if (isDone(hid, dkey(d))) { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+function calcMonthRate(hid) {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const passed = now.getDate();
+  let done = 0;
+  for (let d = 1; d <= passed; d++) {
+    const k = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if (isDone(hid, k)) done++;
+  }
+  return passed > 0 ? Math.round((done/passed)*100) : 0;
+}
+
+// ═══════════════════════════════════════════
+// TIME TRACKER
+// ═══════════════════════════════════════════
+function fmtTime(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function fmtTimeShort(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}
+
+function getElapsed(hid) { return timers[hid] ? timers[hid].elapsed : 0; }
+
+function startTimer(hid) {
+  if (timers[hid] && timers[hid].running) return;
+  if (!timers[hid]) timers[hid] = { elapsed: 0, running: false };
+  timers[hid].running = true;
+  timers[hid].start = Date.now() - timers[hid].elapsed * 1000;
+  timers[hid].interval = setInterval(() => {
+    timers[hid].elapsed = Math.floor((Date.now() - timers[hid].start) / 1000);
+    updateTimerDisplay(hid);
+  }, 1000);
+}
+
+function stopTimer(hid) {
+  if (!timers[hid] || !timers[hid].running) return;
+  clearInterval(timers[hid].interval);
+  timers[hid].running = false;
+  const elapsed = timers[hid].elapsed;
+  if (elapsed > 0) {
+    const k = today();
+    if (!timeLogs[hid]) timeLogs[hid] = {};
+    if (!timeLogs[hid][k]) timeLogs[hid][k] = [];
+    timeLogs[hid][k].push(elapsed);
+    save();
+  }
+  updateTimerDisplay(hid);
+}
+
+function resetTimer(hid) {
+  stopTimer(hid);
+  if (timers[hid]) timers[hid].elapsed = 0;
+  updateTimerDisplay(hid);
+}
+
+function updateTimerDisplay(hid) {
+  const el = document.getElementById(`timer-display-${hid}`);
+  if (!el) return;
+  const e = timers[hid] ? timers[hid].elapsed : 0;
+  el.textContent = fmtTime(e);
+  el.classList.toggle('running', !!(timers[hid] && timers[hid].running));
+  // update log chips
+  updateLogChips(hid);
+}
+
+function updateLogChips(hid) {
+  const el = document.getElementById(`timer-logs-${hid}`);
+  if (!el) return;
+  const k = today();
+  const logs = (timeLogs[hid] && timeLogs[hid][k]) ? timeLogs[hid][k] : [];
+  const total = logs.reduce((a,b)=>a+b,0);
+  el.innerHTML = logs.length > 0
+    ? `<span class="time-log-chip">Today: ${fmtTimeShort(total)}</span>${logs.map(s=>`<span class="time-log-chip">${fmtTimeShort(s)}</span>`).join('')}`
+    : `<span class="time-log-chip" style="color:var(--muted)">No sessions today</span>`;
+}
+
+function getTotalTimeToday(hid) {
+  const k = today();
+  if (!timeLogs[hid] || !timeLogs[hid][k]) return 0;
+  return timeLogs[hid][k].reduce((a,b)=>a+b,0);
+}
+
+function getTotalTimeDate(hid, dk) {
+  if (!timeLogs[hid] || !timeLogs[hid][dk]) return 0;
+  return timeLogs[hid][dk].reduce((a,b)=>a+b,0);
+}
+
+function getAllTimeTotal(hid) {
+  if (!timeLogs[hid]) return 0;
+  return Object.values(timeLogs[hid]).flat().reduce((a,b)=>a+b,0);
+}
+
+function getAvgTimePerDay(hid) {
+  if (!timeLogs[hid]) return 0;
+  const days = Object.keys(timeLogs[hid]).filter(k => timeLogs[hid][k].length > 0);
+  if (days.length === 0) return 0;
+  const total = days.reduce((s,k) => s + timeLogs[hid][k].reduce((a,b)=>a+b,0), 0);
+  return Math.round(total / days.length);
+}
+
+// ═══════════════════════════════════════════
+// HOME PAGE
+// ═══════════════════════════════════════════
+function renderHome() {
+  const now = new Date();
+  document.getElementById('home-date').textContent = DAYS[now.getDay()] + ', ' + MONTHS[now.getMonth()] + ' ' + now.getDate();
+  const tk = today();
+  const list = document.getElementById('habits-list');
+  [...list.querySelectorAll('.habit-card')].forEach(e=>e.remove());
+  document.getElementById('empty-state').style.display = habits.length ? 'none' : 'block';
+
+  habits.forEach((h, idx) => {
+    const done = isDone(h.id, tk);
+    const streak = calcStreak(h.id);
+    const weekDots = Array.from({length:7},(_,i)=>{
+      const d = new Date(); d.setDate(d.getDate()-(6-i));
+      const k = dkey(d), isToday = i===6, wasDone = isDone(h.id,k);
+      return `<div class="wd ${wasDone?'done':''} ${isToday?'today':''}" style="${wasDone?'--c:'+h.color:''}"></div>`;
+    }).join('');
+
+    const timerRunning = timers[h.id] && timers[h.id].running;
+    const elapsed = timers[h.id] ? timers[h.id].elapsed : 0;
+
+    const card = document.createElement('div');
+    card.className = 'habit-card';
+    card.style.animationDelay = `${idx*0.06}s`;
+    card.innerHTML = `
+      <div class="habit-card-accent" style="background:${h.color}"></div>
+      <div class="habit-inner">
+        <div class="habit-top">
+          <div class="habit-left">
+            <span class="habit-emoji">${h.emoji}</span>
+            <div>
+              <div class="habit-name">${h.name}</div>
+              <div class="habit-streak-row">
+                ${streak>0?`<span class="streak-badge">🔥 ${streak} day${streak!==1?'s':''}</span>`:'<span style="font-size:11px;color:var(--muted)">Start your streak!</span>'}
+              </div>
+            </div>
+          </div>
+          <div class="habit-actions">
+            <button class="del-btn" onclick="deleteHabit('${h.id}')" aria-label="Delete">🗑</button>
+            <button class="check-btn ${done?'done':''}" style="--c:${h.color}" onclick="toggleToday('${h.id}')" aria-label="Toggle">
+              <span class="check-icon">${done?'✓':''}</span>
+            </button>
+          </div>
+        </div>
+        <div class="week-dots">${weekDots}</div>
+      </div>
+      <div class="time-section">
+        <div class="time-section-top">
+          <span class="time-label">⏱ Focus Timer</span>
+          <span class="time-display ${timerRunning?'running':''}" id="timer-display-${h.id}">${fmtTime(elapsed)}</span>
+        </div>
+        <div class="time-btns">
+          <button class="time-btn ${timerRunning?'stop':'start'}" id="timer-btn-${h.id}"
+            onclick="handleTimerBtn('${h.id}')">
+            ${timerRunning?'⏸ Pause':'▶ Start'}
+          </button>
+          <button class="time-btn reset" onclick="resetTimer('${h.id}');renderHome()">↺ Reset</button>
+        </div>
+        <div class="time-log-row" id="timer-logs-${h.id}"></div>
+      </div>
+    `;
+    list.appendChild(card);
+    updateLogChips(h.id);
+  });
+
+  // banner
+  const total = habits.length;
+  const doneCount = habits.filter(h=>isDone(h.id,tk)).length;
+  const pct = total > 0 ? Math.round((doneCount/total)*100) : 0;
+  document.getElementById('banner-pct').textContent = pct + '%';
+  document.getElementById('banner-bar').style.width = pct + '%';
+  document.getElementById('banner-sub').textContent = `${doneCount} of ${total} habit${total!==1?'s':''} done`;
+  document.getElementById('banner-msg').textContent =
+    pct === 100 && total > 0 ? 'All done! Amazing! 🎉' :
+    pct >= 50 ? 'Keep going! 💪' : 'Let\'s build today!';
+}
+
+function handleTimerBtn(hid) {
+  const running = timers[hid] && timers[hid].running;
+  if (running) stopTimer(hid); else startTimer(hid);
+  // update button
+  const btn = document.getElementById(`timer-btn-${hid}`);
+  if (btn) {
+    const nowRunning = timers[hid] && timers[hid].running;
+    btn.className = `time-btn ${nowRunning?'stop':'start'}`;
+    btn.textContent = nowRunning ? '⏸ Pause' : '▶ Start';
+  }
+  if (timers[hid] && timers[hid].running) {
+    showToast('⏱ Timer started!');
+  } else {
+    showToast('⏸ Session saved!');
+    renderStats();
+  }
+}
+
+function toggleToday(hid) {
+  toggleDone(hid, today());
+  renderHome();
+  showToast(isDone(hid, today()) ? '✓ Done! Great job!' : 'Unmarked');
+}
+
+function deleteHabit(hid) {
+  if (!confirm('Delete this habit?')) return;
+  stopTimer(hid);
+  habits = habits.filter(h=>h.id!==hid);
+  delete timers[hid];
+  save(); renderHome(); renderCalendar(); renderStats();
+}
+
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
+function openModal() { document.getElementById('modal').classList.add('open'); setTimeout(()=>document.getElementById('habit-name').focus(),300); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalBg(e) { if(e.target===document.getElementById('modal')) closeModal(); }
+function selEmoji(el) { document.querySelectorAll('.emoji-opt').forEach(e=>e.classList.remove('selected')); el.classList.add('selected'); selEmoji_=el.dataset.e; }
+function selColor(el) { document.querySelectorAll('.color-opt').forEach(e=>e.classList.remove('selected')); el.classList.add('selected'); selColor_=el.dataset.c; }
+
+function saveHabit() {
+  const name = document.getElementById('habit-name').value.trim();
+  if (!name) { showToast('Please enter a habit name'); return; }
+  habits.push({ id: Date.now().toString(), name, emoji: selEmoji_, color: selColor_, created: today() });
+  save(); document.getElementById('habit-name').value = '';
+  closeModal(); renderHome(); renderCalendar(); renderStats();
+  showToast('Habit added! 🎉');
+}
+
+// ═══════════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════════
+function renderCalendar() {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  document.getElementById('cal-month-title').textContent = `${MONTHS[m]} ${y}`;
+  const chips = document.getElementById('cal-chips');
+  chips.innerHTML = '';
+  if (!habits.length) { chips.innerHTML='<span style="font-size:13px;color:var(--muted)">Add habits first</span>'; document.getElementById('cal-cells').innerHTML=''; return; }
+  if (!selHabitId || !habits.find(h=>h.id===selHabitId)) selHabitId = habits[0].id;
+  habits.forEach(h => {
+    const chip = document.createElement('div');
+    chip.className = `cal-chip ${h.id===selHabitId?'active':''}`;
+    if (h.id===selHabitId) chip.style.background = h.color;
+    chip.textContent = h.emoji+' '+h.name;
+    chip.onclick = () => { selHabitId=h.id; renderCalendar(); };
+    chips.appendChild(chip);
+  });
+  const cells = document.getElementById('cal-cells');
+  cells.innerHTML = '';
+  const firstDay = new Date(y,m,1).getDay();
+  const dim = new Date(y,m+1,0).getDate();
+  const tk = today();
+  const sh = habits.find(h=>h.id===selHabitId);
+  const nowD = new Date();
+
+  for (let i=0;i<firstDay;i++) { const c=document.createElement('div'); c.className='cal-cell empty'; cells.appendChild(c); }
+  for (let d=1;d<=dim;d++) {
+    const k=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cellDate = new Date(y,m,d);
+    const isToday = k===tk;
+    const isFuture = cellDate > nowD;
+    const done = isDone(selHabitId, k);
+    const c = document.createElement('div');
+    c.className = `cal-cell has-date ${isToday?'today':''} ${done?'completed':''} ${isFuture?'future':''}`;
+    if (done && sh) c.style.background = sh.color;
+    c.textContent = d;
+    if (!isFuture) {
+      c.onclick = () => { toggleDone(selHabitId,k); renderCalendar(); renderHome(); renderStats(); };
+    }
+    cells.appendChild(c);
+  }
+}
+function changeMonth(d) { calDate.setMonth(calDate.getMonth()+d); renderCalendar(); }
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+function switchChart(mode, btn) {
+  chartMode = mode;
+  document.querySelectorAll('.ctog-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMainChart();
+}
+
+function renderStats() {
+  // stat cards
+  const grid = document.getElementById('stats-grid');
+  const bestStreak = habits.length ? Math.max(...habits.map(h=>calcStreak(h))) : 0;
+  const todayDone = habits.filter(h=>isDone(h.id,today())).length;
+  let allTime = 0; Object.values(completions).forEach(a=>{ allTime+=a.length; });
+  const totalTimeAll = habits.reduce((s,h)=>s+getAllTimeTotal(h.id),0);
+
+  const cards = [
+    { icon:'🏆', val: bestStreak, label:'Best Streak', color:'var(--amber)' },
+    { icon:'✅', val: todayDone, label:'Done Today', color:'var(--green)' },
+    { icon:'⚡', val: allTime, label:'All-time Checks', color:'var(--accent)' },
+    { icon:'⏱', val: fmtTimeShort(totalTimeAll), label:'Total Focus Time', color:'var(--cyan)' },
+  ];
+  grid.innerHTML = cards.map((c,i) => `
+    <div class="stat-card" style="animation-delay:${i*0.08}s">
+      <div class="stat-icon">${c.icon}</div>
+      <div class="stat-val" style="color:${c.color}">${c.val}</div>
+      <div class="stat-label">${c.label}</div>
+    </div>`).join('');
+
+  renderMainChart();
+  renderTimeChart();
+  renderTimeStats();
+  renderProgressBars();
+}
+
+function renderMainChart() {
+  const bars = document.getElementById('chart-bars');
+  bars.innerHTML = '';
+  const now = new Date();
+  document.getElementById('habit-chart-sub').textContent = MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+
+  // last 7 days
+  const days = Array.from({length:7},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
+
+  let maxVal = 1;
+  const vals = days.map(d => {
+    if (chartMode === 'habit') {
+      return habits.filter(h=>isDone(h.id,dkey(d))).length;
+    } else {
+      return Math.round(habits.reduce((s,h)=>s+getTotalTimeDate(h.id,dkey(d)),0)/60); // minutes
+    }
+  });
+  maxVal = Math.max(...vals, 1);
+
+  days.forEach((d,i) => {
+    const val = vals[i];
+    const pct = Math.round((val/maxVal)*100);
+    const isToday = dkey(d) === today();
+    const col = document.createElement('div');
+    col.className = 'chart-col';
+    col.innerHTML = `
+      <div class="chart-val-label">${val>0?val:''}</div>
+      <div class="chart-bar-wrap">
+        <div class="chart-bar ${chartMode==='habit'?'accent-bar':'cyan-bar'} ${isToday?'highlight':''}"
+          style="height:${Math.max(pct,3)}%"></div>
+      </div>
+      <div class="chart-dlabel">${DSHORT[d.getDay()]}</div>
+    `;
+    bars.appendChild(col);
+  });
+}
+
+function renderTimeChart() {
+  const bars = document.getElementById('time-chart-bars');
+  bars.innerHTML = '';
+  const now = new Date();
+  document.getElementById('time-chart-sub').textContent = 'Last 14 days · minutes';
+  const days = Array.from({length:14},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(13-i)); return d; });
+  const vals = days.map(d => Math.round(habits.reduce((s,h)=>s+getTotalTimeDate(h.id,dkey(d)),0)/60));
+  const maxVal = Math.max(...vals,1);
+
+  days.forEach((d,i) => {
+    const val = vals[i];
+    const pct = Math.round((val/maxVal)*100);
+    const isToday = dkey(d)===today();
+    const col = document.createElement('div');
+    col.className = 'chart-col';
+    col.innerHTML = `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar cyan-bar ${isToday?'highlight':''}" style="height:${Math.max(pct,2)}%"></div>
+      </div>
+      <div class="chart-dlabel">${d.getDate()}</div>
+    `;
+    bars.appendChild(col);
+  });
+}
+
+function renderTimeStats() {
+  const card = document.getElementById('time-stats-card');
+  if (!habits.length) { card.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0;">No habits yet</div>'; return; }
+  card.innerHTML = habits.map(h => {
+    const todayT = getTotalTimeToday(h.id);
+    const totalT = getAllTimeTotal(h.id);
+    const avgT = getAvgTimePerDay(h.id);
+    return `
+      <div class="tsrow">
+        <div class="tsrow-left">${h.emoji} <strong style="font-size:13px;">${h.name}</strong></div>
+        <div></div>
+      </div>
+      <div class="tsrow">
+        <div class="tsrow-left" style="color:var(--muted);font-size:12px;">⏱ Today</div>
+        <div class="tsrow-val">${todayT>0?fmtTimeShort(todayT):'—'}</div>
+      </div>
+      <div class="tsrow">
+        <div class="tsrow-left" style="color:var(--muted);font-size:12px;">📊 Avg/day</div>
+        <div class="tsrow-val" style="color:var(--accent)">${avgT>0?fmtTimeShort(avgT):'—'}</div>
+      </div>
+      <div class="tsrow">
+        <div class="tsrow-left" style="color:var(--muted);font-size:12px;">⚡ Total</div>
+        <div class="tsrow-val" style="color:var(--amber)">${totalT>0?fmtTimeShort(totalT):'—'}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderProgressBars() {
+  const list = document.getElementById('prog-list');
+  list.innerHTML = '';
+  if (!habits.length) { list.innerHTML='<div style="color:var(--muted);font-size:13px;">Add habits to see progress</div>'; return; }
+  habits.forEach((h,i) => {
+    const rate = calcMonthRate(h.id);
+    const streak = calcStreak(h.id);
+    const item = document.createElement('div');
+    item.className = 'prog-item';
+    item.style.animationDelay = `${i*0.07}s`;
+    item.innerHTML = `
+      <div class="prog-top">
+        <div class="prog-name">
+          ${h.emoji} ${h.name}
+          ${streak>0?`<span style="font-size:11px;color:var(--amber)">🔥${streak}</span>`:''}
+        </div>
+        <div class="prog-pct" style="color:${h.color}">${rate}%</div>
+      </div>
+      <div class="prog-bar">
+        <div class="prog-fill" style="background:${h.color}" data-target="${rate}"></div>
+      </div>`;
+    list.appendChild(item);
+    setTimeout(()=>{ const f=item.querySelector('.prog-fill'); if(f) f.style.width=rate+'%'; },100+i*60);
+  });
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if (id==='calendar') renderCalendar();
+  if (id==='stats') renderStats();
+  if (id==='home') renderHome();
+}
+
+function fmtTimeShort(s) {
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
+  if(h>0) return `${h}h ${m}m`;
+  if(m>0) return `${m}m`;
+  return s>0?`${s}s`:'0m';
+}
+
+let toastTimer;
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  toastTimer = setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+renderHome();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
